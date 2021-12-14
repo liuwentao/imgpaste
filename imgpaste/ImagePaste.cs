@@ -49,7 +49,6 @@ namespace imgpaste
             {
                 throw new InvalidOperationException("No image has been captured! Use the Capture() method before calling SaveAs()!");
             }
-
             var imgFormat = SelectFormat(path);
             _image.Save(path, imgFormat);
         }

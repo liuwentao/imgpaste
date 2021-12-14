@@ -1,15 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Management;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace imgpaste
 {
-    class Program
+    public static class Program
     {
         const string UsageText = "USAGE: imgpaste.exe file1.png [file2.jpg ..]";
-        const string VersionText = "imgpaste 0.1 by NeoSmart Technologies - https://neosmart.net/";
+        const string VersionText = "imgpaste 0.2 by NeoSmart Technologies - https://neosmart.net/";
 
         static async Task<int> Main(string[] args)
         {
@@ -17,13 +19,20 @@ namespace imgpaste
 
             try
             {
+                bool needDecode = Process.GetCurrentProcess().GetParent().ProcessName.Contains("emacs");
                 using (var imgpaste = new ImagePaste())
                 {
                     imgpaste.Capture();
-
                     foreach (var dest in outputs)
                     {
-                        imgpaste.SaveAs(dest);
+                        var destPath = dest;
+                        if (needDecode)
+                        {
+                            byte[] gbkBytes = Encoding.GetEncoding("gbk").GetBytes(dest);
+                            destPath = Encoding.GetEncoding("UTF-8").GetString(gbkBytes);
+                        }
+
+                        imgpaste.SaveAs(destPath);
                     }
                 }
             }
@@ -81,6 +90,28 @@ namespace imgpaste
             }
 
             return outputs;
+        }
+
+        public static Process GetParent(this Process process)
+        {
+            try
+            {
+                using (var query = new ManagementObjectSearcher(
+                  "SELECT * " +
+                  "FROM Win32_Process " +
+                  "WHERE ProcessId=" + process.Id))
+                {
+                    return query
+                      .Get()
+                      .OfType<ManagementObject>()
+                      .Select(p => Process.GetProcessById((int)(uint)p["ParentProcessId"]))
+                      .FirstOrDefault();
+                }
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 }
